@@ -1,0 +1,10 @@
+﻿{
+  "profiles": {
+    "KorubinNewCore": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
