@@ -39,7 +39,7 @@ namespace KorubinNewCore.Managers
             }
             return clients;
         }
-        public HashSet<StatusChangedDevice> GetClientStatusChanged(int clientId)
+        public HashSet<StatusChangedDevice> GetClientStatusChanged(int statusCode,int clientId)
         {
             HashSet<StatusChangedDevice> statusChangedDevice = new HashSet<StatusChangedDevice>();
             try
@@ -47,16 +47,19 @@ namespace KorubinNewCore.Managers
                 using (var con = new MySqlConnection(connectionString))
                 {
                     con.Open();
-                    var cmd = new MySqlCommand($"select cd.clientId, cd.id, cd.channelJson, cd.deviceJson from dbkepware.channeldevice cd where find_in_set(cd.statusCode, '60,50,40,30,20,10') and cd.clientId = {clientId}", con);
+                    var cmd = new MySqlCommand($"CALL sp_getDeviceInfoByStatusCode({statusCode},{clientId})", con);
                     var reader = cmd.ExecuteReader();
                     while (reader.Read())
                     {
                         statusChangedDevice.Add(new StatusChangedDevice
                         {
                         
-                            DeviceName = reader.GetInt32("id"),
+                            DeviceName = reader.GetInt32("DeviceId"),
                             ChannelJson = reader.GetString("channelJson"),
-                            DeviceJson = reader.GetString("deviceJson")
+                            DeviceJson = reader.GetString("DeviceJson"),
+                            PoolId = reader.GetInt32("DeviceTypeId"),
+                            ChannelName = reader.GetString("ChannelName"),
+                            StatusCode = reader.GetInt32("StatusCode")
                         });
                     }
                     con.Close();
@@ -69,6 +72,24 @@ namespace KorubinNewCore.Managers
                 throw;
             }
             return statusChangedDevice;
+        }
+        public void SetDeviceStatus(int deviceId,int statusCode)
+        {
+            try
+            {
+                using ( var con = new MySqlConnection(connectionString) )
+                {
+                    con.Open();
+                    var cmd = new MySqlCommand($"Call sp_setDeviceStatusById({statusCode},{deviceId});", con);
+                    var res = cmd.ExecuteNonQuery();
+                    con.Close();
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
         public HashSet<Node> GetNodes(int clientId)
         {

@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Configuration;
 using System.Threading;
 using System.Timers;
+using System.Threading.Tasks;
 
 namespace KorubinNewCore.Managers
 {
@@ -16,32 +17,27 @@ namespace KorubinNewCore.Managers
     {
         bool _stopped = false;
         int _clientId;
+        int[] _statusCodes = { 60,50,40,30,20,10};
+        string _restApiResult;
         TimerManager _timerManager;
         Session _session;
         Subscription _subscription;
         HashSet<MonitoredItem> _nodes;
         DatabaseManager _databaseManager;
+        ApplicationConfiguration _config;
+        KepwareRestApiManager _kepwareRestApiManager;
         public ClientManager(int clientId, HashSet<MonitoredItem> nodes)
         {
             _timerManager = new TimerManager();
             _databaseManager = new DatabaseManager();
+            _kepwareRestApiManager = new KepwareRestApiManager();
             _clientId = clientId;
             _nodes = nodes;
-
+            
             var opcConfig = new OpcCertification();
-            var config = opcConfig.GetConfiguration();
-            _session = Session.Create(config,
-                new ConfiguredEndpoint(null, new EndpointDescription(ConfigurationManager.ConnectionStrings["OpcStr"].ConnectionString)),
-                true,
-                "",
-                60000,
-                null,
-                null).Result;
-            _subscription = new Subscription(_session.DefaultSubscription)
-            {
-                PublishingInterval = 1000,
-                MaxNotificationsPerPublish = 10000
-            };
+            _config = opcConfig.GetConfiguration();
+            
+
         }
 
         public void Start()
@@ -59,13 +55,12 @@ namespace KorubinNewCore.Managers
             ExtendedTimer getDeviceStatusTimer = new ExtendedTimer("getDeviceStatusTimer" + _clientId, 10000);
             getDeviceStatusTimer.Elapsed += new ElapsedEventHandler(getDeviceStatusTimerEvent);
 
-            ExtendedTimer checkReconnect = new ExtendedTimer("checkReconnect" + _clientId, 10000);
-            checkReconnect.Elapsed += new ElapsedEventHandler(checkReconnectEvent);
+
 
             _timerManager.AddTimer(tagWriteTimer);
             _timerManager.AddTimer(setClientStateTimer);
             _timerManager.AddTimer(getDeviceStatusTimer);
-            _timerManager.AddTimer(checkReconnect);
+
             Run();
             
 
@@ -75,15 +70,27 @@ namespace KorubinNewCore.Managers
         {
             try
             {
+                _stopped = false;
+                _session = Session.Create(_config,
+                new ConfiguredEndpoint(null, new EndpointDescription(ConfigurationManager.ConnectionStrings["OpcStr"].ConnectionString)),
+                true,
+                "",
+                60000,
+                null,
+                null).Result;
 
-
-                _timerManager.StartAll();
+                _subscription = new Subscription(_session.DefaultSubscription)
+                {
+                    PublishingInterval = 1000,
+                    MaxNotificationsPerPublish = 10000
+                };
 
                 _subscription.AddItems(_nodes);
                 _subscription.FastDataChangeCallback += new FastDataChangeNotificationEventHandler(DataChanged);
                 _session.AddSubscription(_subscription);
                 _session.OperationTimeout = 3600000;
                 _subscription.Create();
+                _timerManager.StartAll();
             }
             catch (Exception ex)
             {
@@ -91,10 +98,7 @@ namespace KorubinNewCore.Managers
                 Console.WriteLine(ex.Message + "--" + _clientId);
             }
         }
-        private void checkReconnectEvent(object sender, ElapsedEventArgs e)
-        {
-            CheckReconnect();
-        }
+
 
         private void getDeviceStatusTimerEvent(object sender, ElapsedEventArgs e)
         {
@@ -110,36 +114,63 @@ namespace KorubinNewCore.Managers
         {
             WriteTagsToServer();
         }
-        public void CheckReconnect()
+
+        public void UpdateServer(HashSet<StatusChangedDevice> devices,int statusCode)
         {
-            var changedDeviceList = _databaseManager.GetClientStatusChanged(_clientId);
-            if (changedDeviceList.Count>0 && _stopped == true)
+            Thread.Sleep(40000);
+            foreach (var item in devices)
             {
-                Run();
+                switch (statusCode)
+                {
+                    case 60:
+                        _restApiResult = _kepwareRestApiManager.ChannelPut(item.ChannelJson, item.ChannelName);
+                        if(_restApiResult == "Success")
+                        {
+                            _databaseManager.SetDeviceStatus(item.DeviceName,61);
+                        }
+                        else
+                        {
+                            _databaseManager.SetDeviceStatus(item.DeviceName, 62);
+                        }
+                        break;
+                    case 30:
+                        _restApiResult = _kepwareRestApiManager.DevicePut(item.DeviceJson, item.ChannelName, item.DeviceName.ToString());
+                        if (_restApiResult == "Success")
+                        {
+                            _databaseManager.SetDeviceStatus(item.DeviceName, 31);
+                        }
+                        else
+                        {
+                            _databaseManager.SetDeviceStatus(item.DeviceName, 32);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                
+
             }
+            Run();
         }
         public void CheckDeviceStatus()
         {
+
             try
             {
-                var changedDeviceList = _databaseManager.GetClientStatusChanged(_clientId);
-                if (changedDeviceList.Count > 0)
+                foreach (var item in _statusCodes)
                 {
-                    _timerManager.StopAll();
-                    _subscription.Delete(true);
-                    _session.Close();
-                    _stopped = true;
-                    _timerManager.StartTimer("checkReconnect" + _clientId);
-                }
-                else
-                {
-                    if (_timerManager.IsTimersStopped == true)
+                    var changedDeviceList = _databaseManager.GetClientStatusChanged(item,_clientId);
+                    if (changedDeviceList.Count > 0)
                     {
-                        _timerManager.StartAll();
+                        _timerManager.StopAll();
+                        _session.Close();
+                        _subscription.Delete(true);
+                        _subscription.Dispose();
+
+                        _stopped = true;
+                        UpdateServer(changedDeviceList, item);
                     }
-                    
-                }
-                
+                }                
             }
             catch (Exception)
             {
@@ -193,7 +224,7 @@ namespace KorubinNewCore.Managers
                     nodesToWrite,
                     out results,
                     out diagnosticInfos);
-
+              
                 }
 
             }
