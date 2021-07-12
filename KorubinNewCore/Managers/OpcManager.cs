@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Text;
 using System.Threading.Tasks;
 using KorubinNewCore.Helpers;
@@ -17,30 +18,38 @@ namespace KorubinNewCore.Managers
         {
             try
             {
-                DatabaseManager databaseManager = new DatabaseManager();
-                var clientList = databaseManager.GetClients();
+                OnServiceStart onServiceStart = new OnServiceStart();
 
-                foreach (var clientId in clientList)
+                onServiceStart.SetClientId(110);
+
+                var serviceName = ConfigurationManager.AppSettings["KepwareServiceName"].ToString();
+                var result = onServiceStart.RestartServiceByServiceName(serviceName);
+
+                
+
+                if (result)
                 {
-                    Task.Run(() =>
-                    {
-                        var subscriptionList = databaseManager.GetNodes(clientId);
-                        var noErrorNodes = databaseManager.GetNoErrorNodes(clientId);
-                        subscriptionList.CreateMonitoredItemList(out HashSet<MonitoredItem> monitoredNodes);
-                        noErrorNodes.CreateMonitoredItemList(out HashSet<MonitoredItem> monitoredNoErrorNodes);
-                        monitoredNodes.UnionWith(monitoredNoErrorNodes);
-                        var _client = new ClientManager(clientId, monitoredNodes);
-                        _client.Start();
-                });
+                    DatabaseManager databaseManager = new DatabaseManager();
+                    var clientList = databaseManager.GetClients();
 
+                    foreach (var clientId in clientList)
+                    {
+                        Task.Run(() =>
+                        {
+
+                            var _client = new ClientManager(clientId);
+                            _client.Start();
+                        });
+                    }
+                }
             }
-                Console.ReadLine();
-            }
-            catch (Exception)
+            catch (Exception ex)
             {
 
-                throw;
+                Console.WriteLine(ex);
+
             }
+            Console.ReadLine();
         }
     }
 }

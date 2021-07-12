@@ -19,6 +19,10 @@ namespace KorubinNewCore.Managers
         int _clientId;
         int[] _statusCodes = { 60,50,40,30,20,10};
         string _restApiResult;
+        string _restApiIndividualResult;
+        string _deviceTagJson;
+        string _deviceIndividualTagJson;
+
         TimerManager _timerManager;
         Session _session;
         Subscription _subscription;
@@ -26,22 +30,32 @@ namespace KorubinNewCore.Managers
         DatabaseManager _databaseManager;
         ApplicationConfiguration _config;
         KepwareRestApiManager _kepwareRestApiManager;
-        public ClientManager(int clientId, HashSet<MonitoredItem> nodes)
+        HashSet<Models.Node> _subscriptionList;
+        HashSet<Models.Node> _noErrorNodes;
+
+        public ClientManager(int clientId)
         {
             _timerManager = new TimerManager();
             _databaseManager = new DatabaseManager();
             _kepwareRestApiManager = new KepwareRestApiManager();
             _clientId = clientId;
-            _nodes = nodes;
-            
             var opcConfig = new OpcCertification();
             _config = opcConfig.GetConfiguration();
-            
+
 
         }
-
+        public void Initialize()
+        {
+            _subscriptionList = _databaseManager.GetNodes(_clientId);
+            _noErrorNodes = _databaseManager.GetNoErrorNodes(_clientId);
+            _subscriptionList.CreateMonitoredItemList(out HashSet<MonitoredItem> monitoredNodes);
+            _noErrorNodes.CreateMonitoredItemList(out HashSet<MonitoredItem> monitoredNoErrorNodes);
+            monitoredNodes.UnionWith(monitoredNoErrorNodes);
+            _nodes = monitoredNodes;
+        }
         public void Start()
         {
+
             _stopped = false;
 
             ExtendedTimer tagWriteTimer = new ExtendedTimer("tagWriteTimer" + _clientId, 1000);
@@ -60,7 +74,6 @@ namespace KorubinNewCore.Managers
             _timerManager.AddTimer(tagWriteTimer);
             _timerManager.AddTimer(setClientStateTimer);
             _timerManager.AddTimer(getDeviceStatusTimer);
-
             Run();
             
 
@@ -68,9 +81,13 @@ namespace KorubinNewCore.Managers
         }
         public void Run()
         {
+
             try
             {
+                Initialize();
+
                 _stopped = false;
+                
                 _session = Session.Create(_config,
                 new ConfiguredEndpoint(null, new EndpointDescription(ConfigurationManager.ConnectionStrings["OpcStr"].ConnectionString)),
                 true,
@@ -81,7 +98,7 @@ namespace KorubinNewCore.Managers
 
                 _subscription = new Subscription(_session.DefaultSubscription)
                 {
-                    PublishingInterval = 1000,
+                    PublishingInterval = 500,
                     MaxNotificationsPerPublish = 10000
                 };
 
@@ -122,28 +139,54 @@ namespace KorubinNewCore.Managers
             {
                 switch (statusCode)
                 {
-                    case 60:
-                        _restApiResult = _kepwareRestApiManager.ChannelPut(item.ChannelJson, item.ChannelName);
-                        if(_restApiResult == "Success")
-                        {
-                            _databaseManager.SetDeviceStatus(item.DeviceName,61);
-                        }
-                        else
-                        {
-                            _databaseManager.SetDeviceStatus(item.DeviceName, 62);
-                        }
-                        break;
                     case 30:
-                        _restApiResult = _kepwareRestApiManager.DevicePut(item.DeviceJson, item.ChannelName, item.DeviceName.ToString());
-                        if (_restApiResult == "Success")
+                        _restApiResult = _kepwareRestApiManager.ChannelPut(item.ChannelJson, item.ChannelName);
+                        if(_restApiResult != "FAILED")
                         {
-                            _databaseManager.SetDeviceStatus(item.DeviceName, 31);
+                            _databaseManager.SetDeviceStatus(item.DeviceName,31);
                         }
                         else
                         {
                             _databaseManager.SetDeviceStatus(item.DeviceName, 32);
                         }
                         break;
+                    case 60:
+
+                        _deviceTagJson = _databaseManager.GetDeviceTagJsonByDeviceId(item.DeviceName);
+                        _restApiResult = _kepwareRestApiManager.TagPost(_deviceTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
+
+                        _deviceIndividualTagJson = _databaseManager.GetDeviceIndividualTagJsonByDeviceId(item.DeviceName);
+                        _restApiIndividualResult = _kepwareRestApiManager.TagPost(_deviceIndividualTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
+                        if (_restApiResult != "FAILED" && _restApiIndividualResult != "FAILED")
+                        {
+                            _databaseManager.SetDeviceStatus(item.DeviceName, 61);
+                        }
+                        else
+                        {
+                            _databaseManager.SetDeviceStatus(item.DeviceName, 62);
+                        }
+                        break;
+                    case 10:
+                        string channelPost = _kepwareRestApiManager.ChannelPost(item.ChannelJson);
+                        string message = _kepwareRestApiManager.DevicePost(item.DeviceJson, item.ChannelName);
+                        if ("Created" == message || message == "Exist")
+                        {
+                            _deviceTagJson = _databaseManager.GetDeviceTagJsonByDeviceId(item.DeviceName);
+                            _restApiResult = _kepwareRestApiManager.TagPost(_deviceTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
+
+                            _deviceIndividualTagJson = _databaseManager.GetDeviceIndividualTagJsonByDeviceId(item.DeviceName);
+                            _restApiIndividualResult = _kepwareRestApiManager.TagPost(_deviceIndividualTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
+                            if (_restApiResult != "FAILED" && _restApiIndividualResult != "FAILED")
+                            {
+                                _databaseManager.SetDeviceStatus(item.DeviceName, 11);
+                            }
+                            else
+                            {
+                                _databaseManager.SetDeviceStatus(item.DeviceName, 12);
+                            }
+                        }
+                            break;
+
                     default:
                         break;
                 }

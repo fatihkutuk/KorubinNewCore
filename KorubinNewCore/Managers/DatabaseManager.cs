@@ -23,7 +23,7 @@ namespace KorubinNewCore.Managers
                 using (var con = new MySqlConnection(connectionString))
                 {
                     con.Open();
-                    var cmd = new MySqlCommand("Select cd.clientId from channeldevice cd where cd.clientId = 1 group by cd.clientId;", con);
+                    var cmd = new MySqlCommand("Select cd.clientId from channeldevice cd group by cd.clientId;", con);
                     var reader = cmd.ExecuteReader();
                     while (reader.Read())
                     {
@@ -39,7 +39,94 @@ namespace KorubinNewCore.Managers
             }
             return clients;
         }
-        public HashSet<StatusChangedDevice> GetClientStatusChanged(int statusCode,int clientId)
+        public HashSet<OpcInit> GetOpcInit()
+        {
+            //Console.WriteLine(connectionString);
+            HashSet<OpcInit> inits = new HashSet<OpcInit>();
+            try
+            {
+                using (var con = new MySqlConnection(connectionString))
+                {
+                    con.Open();
+                    var cmd = new MySqlCommand($"CALL `sp_getInit`()", con);
+                    var reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        inits.Add( new OpcInit() { 
+                            DeviceId = reader.GetInt32("DeviceId"),
+                            ChannelJson = reader.GetString("channelJson"),
+                            DeviceJson = reader.GetString("DeviceJson"),
+                            ChannelName = reader.GetString("channelName")
+                        });
+                    }
+                    con.Close();
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return inits;
+        }
+        public string GetDeviceTagJsonByDeviceId(int deviceId)
+        {
+
+            string deviceTags;
+            try
+            {
+
+                using (var con = new MySqlConnection(connectionString))
+                {
+                    con.Open();
+                    var cmd = new MySqlCommand($"CALL sp_getDeviceTagjSons({deviceId})", con);
+
+
+                    var reader = cmd.ExecuteScalar();
+                    deviceTags = reader.ToString();
+                    con.Close();
+                }
+
+
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return deviceTags;
+
+        }
+        public string GetDeviceIndividualTagJsonByDeviceId(int deviceId)
+        {
+
+            string deviceTags;
+            try
+            {
+
+                using (var con = new MySqlConnection(connectionString))
+                {
+                    con.Open();
+                    var cmd = new MySqlCommand($"CALL sp_getDeviceIndividualTagJsons({deviceId})", con);
+
+
+                    var reader = cmd.ExecuteScalar();
+                    deviceTags = reader.ToString();
+                    con.Close();
+                }
+
+
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return deviceTags;
+
+        }
+
+        public HashSet<StatusChangedDevice> GetClientStatusChanged(int statusCode, int clientId)
         {
             HashSet<StatusChangedDevice> statusChangedDevice = new HashSet<StatusChangedDevice>();
             try
@@ -53,7 +140,7 @@ namespace KorubinNewCore.Managers
                     {
                         statusChangedDevice.Add(new StatusChangedDevice
                         {
-                        
+
                             DeviceName = reader.GetInt32("DeviceId"),
                             ChannelJson = reader.GetString("channelJson"),
                             DeviceJson = reader.GetString("DeviceJson"),
@@ -73,11 +160,11 @@ namespace KorubinNewCore.Managers
             }
             return statusChangedDevice;
         }
-        public void SetDeviceStatus(int deviceId,int statusCode)
+        public void SetDeviceStatus(int deviceId, int statusCode)
         {
             try
             {
-                using ( var con = new MySqlConnection(connectionString) )
+                using (var con = new MySqlConnection(connectionString))
                 {
                     con.Open();
                     var cmd = new MySqlCommand($"Call sp_setDeviceStatusById({statusCode},{deviceId});", con);
@@ -96,15 +183,16 @@ namespace KorubinNewCore.Managers
             HashSet<Node> nodes = new HashSet<Node>();
             try
             {
-                using (var con = new MySqlConnection(connectionString)) 
+                using (var con = new MySqlConnection(connectionString))
                 {
                     con.Open();
-                    var cmd = new MySqlCommand($"Call sp_getClientSubscriptionList({clientId});",con);
+                    var cmd = new MySqlCommand($"Call sp_getClientSubscriptionList({clientId});", con);
                     var reader = cmd.ExecuteReader();
                     while (reader.Read())
                     {
-                        nodes.Add(new Node { 
-                            ChannelName = reader.GetString("ChannelName"), 
+                        nodes.Add(new Node
+                        {
+                            ChannelName = reader.GetString("ChannelName"),
                             DeviceName = reader.GetInt32("DeviceName"),
                             TagName = reader.GetString("TagName"),
                             DeviceTagId = reader.GetInt32("DeviceTagId")
@@ -137,7 +225,7 @@ namespace KorubinNewCore.Managers
                         {
                             ChannelName = reader.GetString("channelName"),
                             DeviceName = reader.GetInt32("id"),
-     
+
                         });
                     }
                     con.Close();
@@ -183,7 +271,7 @@ namespace KorubinNewCore.Managers
             }
             return writeNodeValue;
         }
-        public void SetClientState(int clientId,string clientState)
+        public void SetClientState(int clientId, string clientState)
         {
             try
             {
@@ -208,7 +296,7 @@ namespace KorubinNewCore.Managers
                 using (var con = new MySqlConnection(connectionString))
                 {
                     con.Open();
-                    var cmd = new MySqlCommand(values,con);
+                    var cmd = new MySqlCommand(values, con);
                     cmd.ExecuteNonQuery();
                     con.Close();
                 }

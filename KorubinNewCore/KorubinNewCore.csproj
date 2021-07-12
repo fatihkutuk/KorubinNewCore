@@ -10,5 +10,6 @@
     <PackageReference Include="MySql.Data" Version="8.0.25" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.4.366.38" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="5.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="5.0.0" />
   </ItemGroup>
 </Project>
