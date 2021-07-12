@@ -36,7 +36,6 @@ namespace KorubinNewCore.Managers
                     {
                         Task.Run(() =>
                         {
-
                             var _client = new ClientManager(clientId);
                             _client.Start();
                         });
