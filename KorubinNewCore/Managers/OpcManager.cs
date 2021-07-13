@@ -19,8 +19,10 @@ namespace KorubinNewCore.Managers
             try
             {
                 OnServiceStart onServiceStart = new OnServiceStart();
+                var clientCount = ConfigurationManager.AppSettings["ClientDeviceCount"].ToString();
 
-                onServiceStart.SetClientId(110);
+                onServiceStart.Initializer(Convert.ToInt32(clientCount));
+
 
                 var serviceName = ConfigurationManager.AppSettings["KepwareServiceName"].ToString();
                 var result = onServiceStart.RestartServiceByServiceName(serviceName);

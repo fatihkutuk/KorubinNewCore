@@ -80,7 +80,7 @@ namespace KorubinNewCore.Helpers
             return _serviceStatus;
         }
 
-        public bool SetClientId(int DeviceCount)
+        public bool Initializer(int deviceCountInClient)
         {
             GetKepwareChannelList();
             HashSet<OpcInit> devices = _databaseManager.GetOpcInit();
@@ -106,6 +106,15 @@ namespace KorubinNewCore.Helpers
                 }
             }
 
+            double deviceCount = devices.Count;
+            int clientCount = (int)Math.Ceiling(deviceCount / deviceCountInClient);
+            string sql = string.Empty;
+            for (int i = 0; i < clientCount; i++)
+            {
+                sql = string.Empty;
+                devices.Skip(i * deviceCountInClient).Take(deviceCountInClient).ToList().ForEach(a => sql += a.DeviceId + ",");
+               _databaseManager.setClientToDevices(i + 1, sql.Remove(sql.Length - 1, 1));
+            }
 
             return true;
         }

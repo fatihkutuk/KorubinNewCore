@@ -125,7 +125,27 @@ namespace KorubinNewCore.Managers
             return deviceTags;
 
         }
+        public void setClientToDevices(int clientId, string devicesId)
+        {
+            HashSet<StatusChangedDevice> statusChangedDevice = new HashSet<StatusChangedDevice>();
+            try
+            {
+                using (var con = new MySqlConnection(connectionString))
+                {
+                    con.Open();
+                    var cmd = new MySqlCommand($"CALL sp_setClientIdToDevices({clientId},'{devicesId}')", con);
+                    cmd.ExecuteNonQuery();
+                    con.Close();
 
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            
+        }
         public HashSet<StatusChangedDevice> GetClientStatusChanged(int statusCode, int clientId)
         {
             HashSet<StatusChangedDevice> statusChangedDevice = new HashSet<StatusChangedDevice>();

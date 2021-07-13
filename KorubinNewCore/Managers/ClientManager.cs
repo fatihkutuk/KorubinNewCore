@@ -19,6 +19,7 @@ namespace KorubinNewCore.Managers
         int _clientId;
         int[] _statusCodes = { 60,50,40,30,20,10};
         string _restApiTagPostResult;
+        string _restApiDeviceDeletetResult;
         string _restDevicePutResult;
         string _restChannelPutResult;
         string _restApiIndividualResult;
@@ -145,7 +146,13 @@ namespace KorubinNewCore.Managers
                     case 30:
                         _restChannelPutResult = _kepwareRestApiManager.ChannelPut(item.ChannelJson, item.ChannelName);
                         _restDevicePutResult = _kepwareRestApiManager.DevicePut(item.DeviceJson, item.ChannelName,item.DeviceName.ToString());
-                        if(_restChannelPutResult != "FAILED" && _restDevicePutResult != "FAILED")
+                        _deviceTagJson = _databaseManager.GetDeviceTagJsonByDeviceId(item.DeviceName);
+                        _restApiTagPostResult = _kepwareRestApiManager.TagPut(_deviceTagJson.ToString(), item.ChannelName, item.DeviceJson, item.DeviceName.ToString());
+
+                        _deviceIndividualTagJson = _databaseManager.GetDeviceIndividualTagJsonByDeviceId(item.DeviceName);
+                        _restApiIndividualResult = _kepwareRestApiManager.TagPost(_deviceIndividualTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
+
+                        if (_restChannelPutResult != "FAILED" && _restDevicePutResult != "FAILED")
                         {
                             _databaseManager.SetDeviceStatus(item.DeviceName,31);
                         }
@@ -153,11 +160,16 @@ namespace KorubinNewCore.Managers
                         {
                             _databaseManager.SetDeviceStatus(item.DeviceName, 32);
                         }
+                        if (_restApiTagPostResult == "FAILED" && _restApiIndividualResult == "FAILED")
+                        {
+                            _databaseManager.SetDeviceStatus(item.DeviceName, 62);
+                        }
+
                         break;
                     case 60:
 
                         _deviceTagJson = _databaseManager.GetDeviceTagJsonByDeviceId(item.DeviceName);
-                        _restApiTagPostResult = _kepwareRestApiManager.TagPost(_deviceTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
+                        _restApiTagPostResult = _kepwareRestApiManager.TagPut(_deviceTagJson.ToString(), item.ChannelName, item.DeviceJson, item.DeviceName.ToString());
 
                         _deviceIndividualTagJson = _databaseManager.GetDeviceIndividualTagJsonByDeviceId(item.DeviceName);
                         _restApiIndividualResult = _kepwareRestApiManager.TagPost(_deviceIndividualTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
@@ -176,7 +188,7 @@ namespace KorubinNewCore.Managers
                         if ("Created" == message || message == "Exist")
                         {
                             _deviceTagJson = _databaseManager.GetDeviceTagJsonByDeviceId(item.DeviceName);
-                            _restApiTagPostResult = _kepwareRestApiManager.TagPost(_deviceTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());
+                            _restApiTagPostResult = _kepwareRestApiManager.TagPut(_deviceTagJson.ToString(), item.ChannelName, item.DeviceJson, item.DeviceName.ToString());
 
                             _deviceIndividualTagJson = _databaseManager.GetDeviceIndividualTagJsonByDeviceId(item.DeviceName);
                             _restApiIndividualResult = _kepwareRestApiManager.TagPost(_deviceIndividualTagJson.ToString(), item.ChannelName, item.DeviceName.ToString());

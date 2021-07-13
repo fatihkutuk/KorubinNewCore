@@ -60,7 +60,7 @@ namespace KorubinNewCore.Managers
                     string s = message.Content.ReadAsStringAsync().Result;
                     if (message.IsSuccessStatusCode)
                     {
-                        _message = message.ReasonPhrase;
+                        _message = "Success";
                     }
                     else
                     {
@@ -79,26 +79,79 @@ namespace KorubinNewCore.Managers
             }
             return _message;
         }
-        public string TagPost(string jSon, string channelName, string deviceName = "1")
+        public string TagPut(string jSon, string channelName, string deviceJson, string deviceName = "1")
         {
             string _message = string.Empty;
-            try
+
+            var resDeviceDelete = DeviceDelete(channelName, deviceName);
+            if(resDeviceDelete == "Success")
             {
-                using (HttpClient cl = new HttpClient())
+                var resDeviceAdd = DevicePost(deviceJson,channelName);
+                if (resDeviceAdd == "Success")
+                {
+                    try
+                    {
+                        using (HttpClient cl = new HttpClient())
+                        {
+                            cl.BaseAddress = new Uri(baseUrl);
+                            cl.DefaultRequestHeaders.Authorization = authenticator;
+                            cl.DefaultRequestHeaders.Accept.Add(mediaTypeHeader);
+                            string _tempurl = baseUrl + "/" + channelName + "/devices/" + deviceName + "/tags/";
+                            HttpContent content = new StringContent(jSon, Encoding.UTF8, "application/json");
+                            HttpResponseMessage message = cl.PostAsync(_tempurl, content).Result;
+                            Thread.Sleep(50);
+                            _message = message.ReasonPhrase;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _message = "FAILED";
+                    }
+
+                }
+                else
+                {
+                    _message = "FAILED";
+                }
+            }
+            else
+            {
+                _message = "FAILED";
+
+            }
+
+            return _message;
+        }
+        public string TagPost(string jSon, string channelName, string tagName, string deviceName = "1")
+        {
+            string _message = string.Empty;
+            using (HttpClient cl = new HttpClient())
+            {
+                try
                 {
                     cl.BaseAddress = new Uri(baseUrl);
                     cl.DefaultRequestHeaders.Authorization = authenticator;
                     cl.DefaultRequestHeaders.Accept.Add(mediaTypeHeader);
-                    string _tempurl = baseUrl + "/" + channelName + "/devices/" + deviceName + "/tags/";
+                    string _tempurl = baseUrl + "/" + channelName + "/devices/" + deviceName + "/tags/" + tagName;
                     HttpContent content = new StringContent(jSon, Encoding.UTF8, "application/json");
-                    HttpResponseMessage message = cl.PostAsync(_tempurl, content).Result;
-                    Thread.Sleep(50);
-                    _message = message.ReasonPhrase;
+                    HttpResponseMessage message = cl.PutAsync(_tempurl, content).Result;
+                    if (message.IsSuccessStatusCode)
+                    {
+                        string s = message.Content.ReadAsStringAsync().Result;
+                        if (s != string.Empty)
+                        {
+                            _message = s;
+                        }
+                    }
+                    else
+                    {
+                        _message = message.ReasonPhrase;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _message = "FAILED";
+                catch (Exception ex)
+                {
+                    _message = "FAILED";
+                }
             }
             return _message;
         }
@@ -165,6 +218,36 @@ namespace KorubinNewCore.Managers
                         {
                             _message = "Success";
                         }
+                    }
+                    else
+                    {
+                        _message = message.ReasonPhrase;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _message = "FAILED";
+                }
+            }
+            return _message;
+        }
+        public string DeviceDelete(string channelName, string deviceName)
+        {
+            string _message = string.Empty;
+            using (HttpClient cl = new HttpClient())
+            {
+                try
+                {
+                    cl.BaseAddress = new Uri(baseUrl);
+                    cl.DefaultRequestHeaders.Authorization = authenticator;
+                    cl.DefaultRequestHeaders.Accept.Add(mediaTypeHeader);
+                    string _tempurl = baseUrl + "/" + channelName + "/devices/" + deviceName;
+                    HttpResponseMessage message = cl.DeleteAsync(_tempurl).Result;
+                    Thread.Sleep(300);
+                    //string s = message.Content.ReadAsStringAsync().Result;
+                    if (message.IsSuccessStatusCode)
+                    {
+                        _message = "Success";
                     }
                     else
                     {
