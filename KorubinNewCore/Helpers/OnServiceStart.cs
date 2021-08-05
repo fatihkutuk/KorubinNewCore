@@ -22,27 +22,28 @@ namespace KorubinNewCore.Helpers
         KepwareRestApiManager _kepwareRestApiManager;
         DatabaseManager _databaseManager = new DatabaseManager();
         HashSet<string> _channelList = new HashSet<string>();
-        public OnServiceStart()
+        public OnServiceStart(string serviceName)
         {
-            _kepwareRestApiManager = new KepwareRestApiManager();
-            _opcConfig = new OpcCertification();
-            _config = _opcConfig.GetConfiguration();
+            if (RestartServiceByServiceName(serviceName))
+            {
+                _kepwareRestApiManager = new KepwareRestApiManager();
+                _opcConfig = new OpcCertification();
+                _config = _opcConfig.GetConfiguration();
+                _session = Session.Create(_config,
+                new ConfiguredEndpoint(null, new EndpointDescription(ConfigurationManager.ConnectionStrings["OpcStr"].ConnectionString)),
+                true,
+                "",
+                360000,
+                null,
+                null).Result;
+                Console.WriteLine("Restart Bitti");
 
-
-
-            _session = Session.Create(_config,
-            new ConfiguredEndpoint(null, new EndpointDescription(ConfigurationManager.ConnectionStrings["OpcStr"].ConnectionString)),
-            true,
-            "",
-            60000,
-            null,
-            null).Result;
-
-
+            }
         }
 
         public bool RestartServiceByServiceName(string ServiceName)
         {
+
             bool _serviceStatus = false;
 
             ServiceController kepwareService = new ServiceController
@@ -82,6 +83,8 @@ namespace KorubinNewCore.Helpers
 
         public bool Initializer(int deviceCountInClient)
         {
+
+
             GetKepwareChannelList();
             HashSet<OpcInit> devices = _databaseManager.GetOpcInit();
             devices = devices.OrderBy(a => a.DeviceId).ToHashSet();
@@ -104,6 +107,7 @@ namespace KorubinNewCore.Helpers
                     string tagJsonList = _databaseManager.GetDeviceTagJsonByDeviceId(device.DeviceId);
                     _kepwareRestApiManager.TagPost(tagJsonList, device.ChannelName, device.DeviceId.ToString());
                 }
+                Console.WriteLine("Device {0} Eşleştririldi ", device.ChannelName);
             }
 
             double deviceCount = devices.Count;
@@ -113,18 +117,20 @@ namespace KorubinNewCore.Helpers
             {
                 sql = string.Empty;
                 devices.Skip(i * deviceCountInClient).Take(deviceCountInClient).ToList().ForEach(a => sql += a.DeviceId + ",");
-               _databaseManager.setClientToDevices(i + 1, sql.Remove(sql.Length - 1, 1));
+                _databaseManager.setClientToDevices(i + 1, sql.Remove(sql.Length - 1, 1));
             }
+            Console.WriteLine("Eşleştrime Bitti");
+
 
             return true;
         }
-        public void GetKepwareChannelList(string channelName="")
+        public void GetKepwareChannelList(string channelName = "")
         {
 
             _session.Browse(
                 null,
                 null,
-                channelName =="" ? ObjectIds.ObjectsFolder: new NodeId(channelName),
+                channelName == "" ? ObjectIds.ObjectsFolder : new NodeId(channelName),
                 0u,
                 BrowseDirection.Forward,
                 ReferenceTypeIds.HierarchicalReferences,
@@ -138,7 +144,7 @@ namespace KorubinNewCore.Helpers
                 if (!element.DisplayName.Text.StartsWith("_") && element.DisplayName.Text != "Server")
                 {
                     _channelList.Add(element.NodeId.Identifier.ToString());
-                    if (element.NodeId.ToString().Split(".").Length!=2)
+                    if (element.NodeId.ToString().Split(".").Length != 2)
                     {
                         GetKepwareChannelList(element.NodeId.ToString()); //Search other elements
                     }

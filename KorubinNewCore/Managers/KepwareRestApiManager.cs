@@ -122,36 +122,26 @@ namespace KorubinNewCore.Managers
 
             return _message;
         }
-        public string TagPost(string jSon, string channelName, string tagName, string deviceName = "1")
+        public string TagPost(string jSon, string channelName, string deviceName = "1")
         {
             string _message = string.Empty;
-            using (HttpClient cl = new HttpClient())
+            try
             {
-                try
+                using (HttpClient cl = new HttpClient())
                 {
                     cl.BaseAddress = new Uri(baseUrl);
                     cl.DefaultRequestHeaders.Authorization = authenticator;
                     cl.DefaultRequestHeaders.Accept.Add(mediaTypeHeader);
-                    string _tempurl = baseUrl + "/" + channelName + "/devices/" + deviceName + "/tags/" + tagName;
+                    string _tempurl = baseUrl + "/" + channelName + "/devices/" + deviceName + "/tags/";
                     HttpContent content = new StringContent(jSon, Encoding.UTF8, "application/json");
-                    HttpResponseMessage message = cl.PutAsync(_tempurl, content).Result;
-                    if (message.IsSuccessStatusCode)
-                    {
-                        string s = message.Content.ReadAsStringAsync().Result;
-                        if (s != string.Empty)
-                        {
-                            _message = s;
-                        }
-                    }
-                    else
-                    {
-                        _message = message.ReasonPhrase;
-                    }
+                    HttpResponseMessage message = cl.PostAsync(_tempurl, content).Result;
+                    Thread.Sleep(50);
+                    _message = message.ReasonPhrase;
                 }
-                catch (Exception ex)
-                {
-                    _message = "FAILED";
-                }
+            }
+            catch (Exception ex)
+            {
+                _message = "FAILED";
             }
             return _message;
         }

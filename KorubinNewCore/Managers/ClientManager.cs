@@ -19,7 +19,6 @@ namespace KorubinNewCore.Managers
         int _clientId;
         int[] _statusCodes = { 60,50,40,30,20,10};
         string _restApiTagPostResult;
-        string _restApiDeviceDeletetResult;
         string _restDevicePutResult;
         string _restChannelPutResult;
         string _restApiIndividualResult;
@@ -44,9 +43,9 @@ namespace KorubinNewCore.Managers
             _clientId = clientId;
             var opcConfig = new OpcCertification();
             _config = opcConfig.GetConfiguration();
-
-
         }
+
+
         public void Initialize()
         {
             _subscriptionList = _databaseManager.GetNodes(_clientId);
@@ -69,7 +68,7 @@ namespace KorubinNewCore.Managers
             setClientStateTimer.Elapsed += new ElapsedEventHandler(setClientStateTimerEvent);
 
 
-            ExtendedTimer getDeviceStatusTimer = new ExtendedTimer("getDeviceStatusTimer" + _clientId, 10000);
+            ExtendedTimer getDeviceStatusTimer = new ExtendedTimer("getDeviceStatusTimer" + _clientId, 5000);
             getDeviceStatusTimer.Elapsed += new ElapsedEventHandler(getDeviceStatusTimerEvent);
 
 
@@ -95,14 +94,15 @@ namespace KorubinNewCore.Managers
                 new ConfiguredEndpoint(null, new EndpointDescription(ConfigurationManager.ConnectionStrings["OpcStr"].ConnectionString)),
                 true,
                 "",
-                60000,
+                360000,
                 null,
                 null).Result;
-
-                _subscription = new Subscription(_session.DefaultSubscription)
+                
+                 _subscription = new Subscription(_session.DefaultSubscription)
                 {
-                    PublishingInterval = 500,
-                    MaxNotificationsPerPublish = 10000
+                    PublishingInterval = 2000,
+                    MaxNotificationsPerPublish = 10000,
+  
                 };
 
                 _subscription.AddItems(_nodes);
@@ -137,7 +137,7 @@ namespace KorubinNewCore.Managers
 
         public void UpdateServer(HashSet<StatusChangedDevice> devices,int statusCode)
         {
-            Thread.Sleep(40000);
+            Thread.Sleep(5000);
             foreach (var item in devices)
             {
                 switch (statusCode)
@@ -258,6 +258,7 @@ namespace KorubinNewCore.Managers
 
 
         }
+
         public void WriteTagsToServer()
         {
             try
@@ -293,7 +294,7 @@ namespace KorubinNewCore.Managers
             }
 
         }
-        public object ChangeType(string type, double val)
+        private object ChangeType(string type, double val)
         {
             object returned_value = 0;
             switch (type)
@@ -319,6 +320,7 @@ namespace KorubinNewCore.Managers
 
         private void DataChanged(Subscription subscription, DataChangeNotification notification, IList<string> stringTable)
         {
+
             int c = 0;
             StringBuilder sb = new StringBuilder();
             sb.Append("Call sp_setTagValueOnDataChanged(\"");
@@ -336,6 +338,7 @@ namespace KorubinNewCore.Managers
                 }
                 if (c > 0)
                 {
+                    Console.WriteLine($"{c}-----{_clientId}");
                     sb.Remove(sb.Length - 1, 1);
                     sb.Append("\")");
                     _databaseManager.InsertValues(sb.ToString());

@@ -46,7 +46,8 @@
 		<MaxStringLength>1048576</MaxStringLength>
 		<MaxByteStringLength>1048576</MaxByteStringLength>
 		<MaxArrayLength>65535</MaxArrayLength>
-		<MaxMessageSize>4194304</MaxMessageSize>
+		<MaxMessageSize>7194304</MaxMessageSize>
+		<!--<MaxMessageSize>600000</MaxMessageSize>-->
 		<MaxBufferSize>65535</MaxBufferSize>
 		<ChannelLifetime>300000</ChannelLifetime>
 		<SecurityTokenLifetime>3600000</SecurityTokenLifetime>

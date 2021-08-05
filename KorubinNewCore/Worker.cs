@@ -21,6 +21,7 @@ namespace KorubinNewCore
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            
             OpcManager opcManager = new OpcManager();
             opcManager.Start();
         }

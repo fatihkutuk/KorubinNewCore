@@ -23,7 +23,6 @@ namespace KorubinNewCore.Helpers
                 application.ApplicationType = ApplicationType.Client;
                 application.ConfigSectionName = "ClientConfiguration";
                 ApplicationConfiguration config = application.LoadApplicationConfiguration(false).Result;
-
                 Console.WriteLine("configuration loaded");
 
                 bool certOk = application.CheckApplicationInstanceCertificate(false, 0).Result;

@@ -23,7 +23,7 @@ namespace KorubinNewCore.Managers
                 using (var con = new MySqlConnection(connectionString))
                 {
                     con.Open();
-                    var cmd = new MySqlCommand("Select cd.clientId from channeldevice cd where cd.clientId = 6 group by cd.clientId;", con);
+                    var cmd = new MySqlCommand("Select cd.clientId from channeldevice cd group by cd.clientId;", con);
                     var reader = cmd.ExecuteReader();
                     while (reader.Read())
                     {
